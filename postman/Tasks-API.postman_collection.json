@@ -1,0 +1,135 @@
+{
+  "info": {
+    "name": "Tasks API",
+    "description": "REST collection for the Spring Boot Tasks API (in-memory). Import into Postman or Insomnia.\n\n1. Start the app: `mvn spring-boot:run`\n2. Run **Create task** first — it saves `taskId` for the other requests.\n3. Or set collection variables `baseUrl` and `taskId` yourself.\n\nOpenAPI: `{{baseUrl}}/v3/api-docs` · Swagger UI: `{{baseUrl}}/swagger-ui.html`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "taskId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "List tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks",
+            "description": "Returns all tasks (may be empty)."
+          }
+        },
+        {
+          "name": "Get task by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Uses collection variable `taskId` (set by **Create task** or paste a UUID)."
+          }
+        },
+        {
+          "name": "Create task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.id) {",
+                  "        pm.collectionVariables.set('taskId', body.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Buy groceries\",\n  \"description\": \"Milk, bread, eggs\",\n  \"completed\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/tasks",
+            "description": "Creates a task. On success, saves returned `id` into `taskId`."
+          }
+        },
+        {
+          "name": "Replace task (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Buy organic groceries\",\n  \"description\": \"Updated list\",\n  \"completed\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Full replacement; `title` and `completed` are required."
+          }
+        },
+        {
+          "name": "Patch task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"completed\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Partial update; include only fields to change."
+          }
+        },
+        {
+          "name": "Delete task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "204 No Content on success."
+          }
+        }
+      ]
+    },
+    {
+      "name": "OpenAPI",
+      "item": [
+        {
+          "name": "Get OpenAPI document (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/v3/api-docs",
+            "description": "Same specification Swagger UI uses (OpenAPI 3 JSON)."
+          }
+        }
+      ]
+    }
+  ]
+}
