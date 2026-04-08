@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -27,21 +28,13 @@ public class TaskService {
         return new ArrayList<>(store.values());
     }
 
-    /**
-     * Tasks ordered by creation time (stable paging for the in-memory store).
-     */
-    public Page<Task> findAll(Pageable pageable) {
-        List<Task> all = new ArrayList<>(store.values());
-        all.sort(Comparator
-                .comparing(Task::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(t -> t.getTitle() != null ? t.getTitle() : ""));
-        int total = all.size();
-        int page = Math.max(0, pageable.getPageNumber());
-        int size = Math.max(1, pageable.getPageSize());
-        int start = (int) Math.min((long) page * size, total);
-        int end = Math.min(start + size, total);
-        List<Task> slice = start >= end ? List.of() : all.subList(start, end);
-        return new PageImpl<>(slice, pageable.withPage(page), total);
+    public List<Task> findAll(Boolean completed) {
+        if (completed == null) {
+            return findAll();
+        }
+        return store.values().stream()
+                .filter(task -> task.isCompleted() == completed)
+                .collect(Collectors.toList());
     }
 
     public Optional<Task> findById(UUID id) {

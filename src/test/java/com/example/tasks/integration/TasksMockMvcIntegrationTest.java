@@ -91,7 +91,7 @@ class TasksMockMvcIntegrationTest {
         String id = objectMapper.readTree(
                 mockMvc.perform(post("/api/tasks")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(createReq("A", null, false))))
+                                .content(objectMapper.writeValueAsString(createReq("Task A", null, false))))
                         .andExpect(status().isCreated())
                         .andReturn()
                         .getResponse()
@@ -99,7 +99,7 @@ class TasksMockMvcIntegrationTest {
         ).get("id").asText();
 
         TaskUpdateRequest upd = new TaskUpdateRequest();
-        upd.setTitle("B");
+        upd.setTitle("Task B");
         upd.setDescription("full");
         upd.setCompleted(true);
 
@@ -107,12 +107,12 @@ class TasksMockMvcIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(upd)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("B"))
+                .andExpect(jsonPath("$.title").value("Task B"))
                 .andExpect(jsonPath("$.completed").value(true));
 
         mockMvc.perform(get("/api/tasks/{id}", id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("B"));
+                .andExpect(jsonPath("$.title").value("Task B"));
     }
 
     @Test
@@ -120,7 +120,8 @@ class TasksMockMvcIntegrationTest {
         String id = objectMapper.readTree(
                 mockMvc.perform(post("/api/tasks")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(createReq("T", "d", false))))
+                                .content(objectMapper.writeValueAsString(createReq("Task Title", "details", false))))
+                        .andExpect(status().isCreated())
                         .andReturn()
                         .getResponse()
                         .getContentAsString()
@@ -133,7 +134,7 @@ class TasksMockMvcIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(patch)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("T"))
+                .andExpect(jsonPath("$.title").value("Task Title"))
                 .andExpect(jsonPath("$.completed").value(true));
     }
 
@@ -142,7 +143,7 @@ class TasksMockMvcIntegrationTest {
         Task created = objectMapper.readValue(
                 mockMvc.perform(post("/api/tasks")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(createReq("tmp", null, false))))
+                                .content(objectMapper.writeValueAsString(createReq("Temp task", null, false))))
                         .andReturn()
                         .getResponse()
                         .getContentAsString(),
@@ -154,6 +155,90 @@ class TasksMockMvcIntegrationTest {
 
         mockMvc.perform(get("/api/tasks/{id}", created.getId()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getAll_canFilterByCompletedQueryParam() throws Exception {
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq("Completed task", null, true))))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq("Open task", null, false))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        mockMvc.perform(get("/api/tasks").param("completed", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Completed task"))
+                .andExpect(jsonPath("$[0].completed").value(true));
+
+        mockMvc.perform(get("/api/tasks").param("completed", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Open task"))
+                .andExpect(jsonPath("$[0].completed").value(false));
+    }
+
+    @Test
+    void post_titleValidationRejectsBlankAndWrongLength() throws Exception {
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq("  ", null, false))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq("ab", null, false))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("between 3 and 100")));
+
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq("x".repeat(101), null, false))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("between 3 and 100")));
+    }
+
+    @Test
+    void put_titleValidationRejectsBlankAndWrongLength() throws Exception {
+        String id = objectMapper.readTree(
+                mockMvc.perform(post("/api/tasks")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(createReq("Base task", null, false))))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString()
+        ).get("id").asText();
+
+        TaskUpdateRequest blankTitle = new TaskUpdateRequest();
+        blankTitle.setTitle(" ");
+        blankTitle.setDescription("d");
+        blankTitle.setCompleted(false);
+
+        mockMvc.perform(put("/api/tasks/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(blankTitle)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+
+        TaskUpdateRequest shortTitle = new TaskUpdateRequest();
+        shortTitle.setTitle("xy");
+        shortTitle.setDescription("d");
+        shortTitle.setCompleted(false);
+
+        mockMvc.perform(put("/api/tasks/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(shortTitle)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("between 3 and 100")));
     }
 
     private static TaskCreateRequest createReq(String title, String description, boolean completed) {
