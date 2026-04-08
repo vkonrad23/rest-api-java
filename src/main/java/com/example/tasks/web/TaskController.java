@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -42,7 +43,7 @@ public class TaskController {
     }
 
     @GetMapping
-    @Operation(summary = "List all tasks")
+        @Operation(summary = "List tasks, optionally filtered by completion status")
     @ApiResponse(
             responseCode = "200",
             description = "All tasks",
@@ -51,8 +52,10 @@ public class TaskController {
                     array = @ArraySchema(schema = @Schema(implementation = Task.class))
             )
     )
-    public List<Task> list() {
-        return taskService.findAll();
+        public List<Task> list(
+                        @Parameter(description = "Optional completion filter")
+                        @RequestParam(required = false) Boolean completed) {
+                return taskService.findAll(completed);
     }
 
     @GetMapping("/{id}")

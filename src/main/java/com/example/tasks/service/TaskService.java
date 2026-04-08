@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -21,6 +22,15 @@ public class TaskService {
 
     public List<Task> findAll() {
         return new ArrayList<>(store.values());
+    }
+
+    public List<Task> findAll(Boolean completed) {
+        if (completed == null) {
+            return findAll();
+        }
+        return store.values().stream()
+                .filter(task -> task.isCompleted() == completed)
+                .collect(Collectors.toList());
     }
 
     public Optional<Task> findById(UUID id) {

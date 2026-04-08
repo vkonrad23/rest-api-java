@@ -51,6 +51,20 @@ class TaskServiceTest {
     }
 
     @Test
+    void findAll_withCompletedFilter_returnsMatchingTasksOnly() {
+        Task completed = service.create(createRequest("Done task", "d", true));
+        Task open = service.create(createRequest("Open task", "d", false));
+
+        assertThat(service.findAll(null)).hasSize(2);
+        assertThat(service.findAll(true))
+                .extracting(Task::getId)
+                .containsExactly(completed.getId());
+        assertThat(service.findAll(false))
+                .extracting(Task::getId)
+                .containsExactly(open.getId());
+    }
+
+    @Test
     void replace_updatesFieldsAndPreservesCreatedAt() {
         Task t = service.create(createRequest("Old", "d", false));
         var createdAt = t.getCreatedAt();
